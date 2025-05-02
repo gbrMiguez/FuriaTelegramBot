@@ -1,0 +1,118 @@
+import logging
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
+TELEGRAM_TOKEN = "..."
+
+custom_qas = {
+    # Portuguese commands
+    "/historiafuria": "A FURIA é uma organização brasileira de eSports fundada em 2017, que rapidamente se destacou no cenário de Counter-Strike com seu estilo agressivo. Participou de seu primeiro Major em 2019 e foi eleita a melhor organização de eSports do Brasil em 2020 e 2021. Em 2022, foi considerada a quinta maior organização do mundo. A FURIA tem o maior número de participações em Majors entre as equipes brasileiras e conquistou o Gamers8 2022, entre outros títulos importantes.",
+    "/rankingfuria": "Atualmente (maio de 2025), a FURIA ocupa a 16ª posição no ranking mundial da HLTV. Já alcançou o 3º lugar em junho de 2022 e mantém uma média de 13º lugar nos últimos 12 meses. A FURIA também está bem colocada nos rankings das Américas da Valve e ESL.",
+    "/elencoscfuria": "O elenco atual de Counter-Strike da FURIA (abril de 2025) é composto por: YEKINDAR (Mareks Gaļinskis), KSCERATO (Kaike Cerato), yuurih (Yuri Gomes), FalleN (Gabriel Toledo), skullz (Marcelo Oliveira) e chelo (Marcelo Cespedes). A comissão técnica inclui o treinador principal sidde (Sid Macedo) e os analistas Lucid (Hunter Tucker) e innersh1ne (Viacheslav Britvin), além de um novo auxiliar técnico vindo da Falcons.",
+    "/influenciadoresfuria": "Alguns dos influenciadores da FURIA incluem Sofia Espanha (variedade), Otsuka (VALORANT), Xarola (variedade), mwzera (VALORANT), kaah (ex-VALORANT), paulanobre (VALORANT), mount (variedade) e giannrl (Rocket League). Jogadores profissionais como KSCERATO e yuurih também fazem streams. A organização conta com o apoio de Neymar Jr. (presidente da FURIA na Kings League Brasil), Negrete e Jorginho.",
+    "/redessociaisfuria": "Você pode encontrar a FURIA nas seguintes redes sociais:\nTwitter: https://twitter.com/FURIA\nInstagram: https://www.instagram.com/furiagg/\nFacebook: https://www.facebook.com/furiagg/\nYouTube (Principal): https://www.youtube.com/@FURIAgg\nYouTube (FURIA FC): https://www.youtube.com/@FURIAF.C\nYouTube (FURIA CS): https://www.youtube.com/@FURIAggCS\nTwitch: https://www.twitch.tv/furiatv",
+    "/outrasmodalidadesfuria": "Além do Counter-Strike, a FURIA possui equipes em outras modalidades de esportes eletrônicos como Rocket League, League of Legends, VALORANT e Rainbow Six Siege, com conquistas relevantes em alguns desses cenários.",
+    "/capitaofuria": "Atualmente (maio de 2025), o capitão da equipe de Counter-Strike da FURIA é FalleN (Gabriel Toledo).",
+    "/jogadoresativosfuria": "Os jogadores ativos da equipe de Counter-Strike da FURIA (abril de 2025) são: YEKINDAR (Mareks Gaļinskis), KSCERATO (Kaike Cerato), yuurih (Yuri Gomes), FalleN (Gabriel Toledo), skullz (Marcelo Oliveira) e chelo (Marcelo Cespedes).",
+    "/treinadorfuria": "O treinador principal da equipe de Counter-Strike da FURIA é sidde (Sid Macedo).",
+    "/criacaofuria": "A FURIA foi criada no ano de 2017.",
+    "/nacionalidadefuria": "A FURIA é uma organização de esportes eletrônicos de nacionalidade brasileira.",
+    "/coachatualfuria": "O coach atual da equipe de Counter-Strike da FURIA é sidde (Sid Macedo). A equipe também conta com os analistas Lucid (Hunter Tucker) e innersh1ne (Viacheslav Britvin), e um novo auxiliar técnico.",
+    "/quemsaiurecentementefuria": "Não tenho informações precisas sobre saídas recentíssimas de jogadores nos últimos dias. No entanto, é importante acompanhar as notícias e os anúncios oficiais da FURIA para saber sobre quaisquer mudanças no elenco.",
+    "/titulosfuria": "Entre os campeonatos vencidos pela FURIA, destaca-se o Gamers8 2022. A organização também possui diversas outras conquistas e colocações importantes em torneios relevantes ao longo de sua história.",
+    "/melhorcolocacaomajorfuria": "A melhor colocação da FURIA em um Major de Counter-Strike foi chegar aos playoffs em diversas ocasiões.",
+    "/participacaoiemfuria": "Sim, a FURIA é uma participante frequente de torneios da IEM (Intel Extreme Masters). Sua primeira participação em um Major, o IEM Katowice, foi em 2019.",
+    "/ultimotitulofuria": "O título mais recente de grande destaque da FURIA foi a vitória no Gamers8 2022. Para informações sobre outros títulos mais recentes em diferentes campeonatos, recomendo acompanhar as notícias e os resultados da equipe.",
+    "/estruturafuria": "A FURIA é uma organização profissional de esportes eletrônicos com diversas equipes em diferentes modalidades (CS:GO, VALORANT, LoL, R6, Rocket League). Possui uma comissão técnica para cada equipe, além de uma estrutura de gestão, marketing, e influenciadores. A organização também investe em conteúdo e na interação com sua torcida.",
+    "/sedefuria": "A sede principal da FURIA está localizada no Brasil.",
+    "/fundadoresfuria": "Um dos fundadores mais conhecidos e figura pública da FURIA é Jaime Padua.",
+    "/estilodejogofuria": "A FURIA é conhecida por seu estilo de jogo agressivo e dinâmico, buscando sempre impor um ritmo forte nas partidas. Essa característica a tornou popular entre os fãs.",
+    "/torcidafuria": "A torcida da FURIA é extremamente apaixonada e engajada, utilizando frequentemente a hashtag #DiadeFURIA nas redes sociais para demonstrar seu apoio.",
+    "/projetosfuria": "Além das equipes competitivas, a FURIA também desenvolve diversos projetos de conteúdo e interação com a comunidade, como vídeos de bastidores, entrevistas com jogadores e influenciadores, e iniciativas para fãs.",
+    "/furiabasecamp": "A FURIA possui um \"Basecamp\", que é o local onde as equipes treinam e convivem. É um espaço importante para a preparação e o desenvolvimento dos jogadores.",
+    "/parceirosfuria": "A FURIA possui parcerias com diversas marcas e empresas, que apoiam a organização e suas equipes. Essas parcerias são fundamentais para o crescimento e a sustentabilidade da organização.",
+    "/camisasfuria": "Os fãs podem adquirir as camisas oficiais da FURIA através de lojas online e outros canais de venda. As camisas são um símbolo de apoio à organização.",
+    "/furiaacademy": "A FURIA investe em categorias de base e projetos de academia, buscando descobrir e desenvolver novos talentos para o cenário de esports.",
+    "/furiavalorantfeminino": "A FURIA possui uma equipe feminina de VALORANT, mostrando seu apoio à diversidade e à inclusão no cenário competitivo.",
+    "/furiakingsleague": "A FURIA participa da Kings League Brasil com o time FURIA FC, tendo Neymar Jr. como presidente, expandindo sua atuação para novos formatos de competição.",
+    "/ondeassistirjogosfuria": "Os jogos da FURIA podem ser assistidos em diversas plataformas de streaming, como Twitch e YouTube, nos canais oficiais da organização e em canais de parceiros. Fique atento à programação para não perder nenhuma partida!",
+    "/fim": "Nação FURIA, nosso muito obrigado por todo o apoio! Sentimos a energia de vocês em cada momento. Continuaremos lutando com garra por vocês. Até a próxima, e #DiadeFURIA sempre!",
+    "/novocontratado": "A PANTERA CRESCE! 🐾 Damos as boas-vindas ao nosso mais novo reforço! Preparem-se para ver Gabriel Miguez vestindo a nossa camisa e mostrando todo o seu talento. #DiadeFURIA #BemVindo GbrMgz",
+
+    # English commands
+    "/furiahistory": "FURIA is a Brazilian esports organization founded in 2017 that quickly rose to prominence in the Counter-Strike scene with its aggressive playstyle. They participated in their first Major in 2019 and were voted the best esports organization in Brazil in 2020 and 2021. In 2022, they were considered the fifth-largest organization in the world. FURIA has the most Major appearances among Brazilian teams and won Gamers8 2022, among other important titles.",
+    "/furiaranking": "Currently (May 2025), FURIA is ranked 16th in the HLTV world ranking. They reached 3rd place in June 2022 and have maintained an average of 13th place over the last 12 months. FURIA is also well-placed in the Americas rankings by Valve and ESL.",
+    "/furiaroster": "FURIA's current Counter-Strike roster (April 2025) consists of: YEKINDAR (Mareks Gaļinskis), KSCERATO (Kaike Cerato), yuurih (Yuri Gomes), FalleN (Gabriel Toledo), skullz (Marcelo Oliveira), and chelo (Marcelo Cespedes). The coaching staff includes head coach sidde (Sid Macedo) and analysts Lucid (Hunter Tucker) and innersh1ne (Viacheslav Britvin), as well as a new assistant coach from Falcons.",
+    "/furiainfluencers": "Some of FURIA's influencers include Sofia Espanha (variety), Otsuka (VALORANT), Xarola (variety), mwzera (VALORANT), kaah (ex-VALORANT), paulanobre (VALORANT), mount (variety), and giannrl (Rocket League). Professional players like KSCERATO and yuurih also stream on their personal channels. The organization is also supported by Neymar Jr. (president of FURIA in Kings League Brasil), Negrete, and Jorginho.",
+    "/furiasocialmedia": "You can find FURIA on the following social media platforms:\nTwitter: https://twitter.com/FURIA\nInstagram: https://www.instagram.com/furiagg/\nFacebook: https://www.facebook.com/furiagg/\nYouTube (Main): https://www.youtube.com/@FURIAgg\nYouTube (FURIA FC): https://www.youtube.com/@FURIAF.C\nYouTube (FURIA CS): https://www.youtube.com/@FURIAggCS\nTwitch: https://www.twitch.tv/furiatv",
+    "/furiaothergames": "In addition to Counter-Strike, FURIA has teams in other esports such as Rocket League, League of Legends, VALORANT, and Rainbow Six Siege, with significant achievements in some of these scenes.",
+    "/furiacaptain": "Currently (May 2025), the captain of FURIA's Counter-Strike team is FalleN (Gabriel Toledo).",
+    "/furiaactiveplayers": "The active players of FURIA's Counter-Strike team (April 2025) are: YEKINDAR (Mareks Gaļinskis), KSCERATO (Kaike Cerato), yuurih (Yuri Gomes), FalleN (Gabriel Toledo), skullz (Marcelo Oliveira), and chelo (Marcelo Cespedes).",
+    "/furiacoach": "The head coach of FURIA's Counter-Strike team is sidde (Sid Macedo).",
+    "/furiafounded": "FURIA was founded in 2017.",
+    "/furianationality": "FURIA is a Brazilian esports organization.",
+    "/furiacurrentcoach": "The current coach of FURIA's Counter-Strike team is sidde (Sid Macedo). The team also has analysts Lucid (Hunter Tucker) and innersh1ne (Viacheslav Britvin), and a new assistant coach.",
+    "/furiarecentdepartures": "There is no precise information about very recent player departures. However, it's important to follow FURIA's official announcements for any roster changes.",
+    "/furiatitles": "Among FURIA's championships, Gamers8 2022 stands out. The organization also has several other achievements and important placements in relevant tournaments throughout its history.",
+    "/furiamajorresult": "FURIA's best placement in a Counter-Strike Major was reaching the playoffs on several occasions.",
+    "/furiaiemparticipation": "Yes, FURIA is a frequent participant in IEM (Intel Extreme Masters) tournaments. Their first Major participation was at IEM Katowice in 2019.",
+    "/furialatesttitle": "FURIA's most recent major title was winning Gamers8 2022. For information about other recent titles in different championships, we recommend following the team's news and results.",
+    "/furiastructure": "FURIA is a professional esports organization with several teams in different modalities (CS:GO, VALORANT, LoL, R6, Rocket League). It has a coaching staff for each team, as well as management, marketing, and influencers. The organization also invests in content and fan interaction.",
+    "/furiaheadquarters": "FURIA's main headquarters is located in Brazil.",
+    "/furiafounders": "One of FURIA's most well-known founders and public figures is Jaime Padua.",
+    "/furiaplaystyle": "FURIA is known for its aggressive and dynamic playstyle, always seeking to impose a strong rhythm in matches. This characteristic has made them popular among fans.",
+    "/furiafans": "FURIA's fanbase is extremely passionate and engaged, frequently using the hashtag #DiadeFURIA on social media to show their support.",
+    "/furiaprojects": "Besides competitive teams, FURIA also develops various content projects and community interaction initiatives, such as behind-the-scenes videos, player and influencer interviews, and fan initiatives.",
+    "/furiabasecamp": "FURIA has a \"Basecamp\" which is where the teams train and live together. It's an important space for player preparation and development.",
+    "/furiapartners": "FURIA has partnerships with various brands and companies that support the organization and its teams. These partnerships are fundamental for the organization's growth and sustainability.",
+    "/furiamerch": "Fans can purchase official FURIA jerseys through online stores and other sales channels. The jerseys are a symbol of support for the organization.",
+    "/furiaacademy": "FURIA invests in youth programs and academy projects, seeking to discover and develop new talent for the esports scene.",
+    "/furiawomensvalorant": "FURIA has a women's VALORANT team, showing their support for diversity and inclusion in the competitive scene.",
+    "/furiakingsleague": "FURIA participates in Kings League Brasil with FURIA FC team, having Neymar Jr. as president, expanding their presence to new competition formats.",
+    "/furiawatchgames": "FURIA's games can be watched on various streaming platforms such as Twitch and YouTube, on the organization's official channels and partner channels. Stay tuned to the schedule to not miss any matches!",
+    "/end": "FURIA Nation, thank you so much for all your support! We feel your energy in every moment. We will continue fighting with determination for you. Until next time, and #DiadeFURIA always!",
+    "/newsigning": "THE PANTHER GROWS! 🐾 We welcome our newest reinforcement! Get ready to see Gabriel Miguez wearing our jersey and showing all his talent. #DiadeFURIA #Welcome GbrMgz"
+}
+
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text('Olá Furioso, o que gostaria de saber sobre a FURIA hoje? Use /perguntas para ver todos os comandos disponíveis.')
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text('Use /perguntas para ver todos os comandos disponíveis.')
+
+async def perguntas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    comandos = "\n".join(sorted(custom_qas.keys()))
+    await update.message.reply_text(f"Comandos disponíveis:\n{comandos}")
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message_text = update.message.text.lower()
+    
+    # Check if it's a command (starts with /)
+    if message_text.startswith('/'):
+        resposta = custom_qas.get(message_text, "Desculpe, não reconheço esse comando. Use /perguntas para ver todos os comandos disponíveis.")
+        await update.message.reply_text(resposta)
+    else:
+        # Handle non-command messages
+        await update.message.reply_text("Por favor, use um dos comandos disponíveis. Digite /perguntas para ver a lista de comandos.")
+
+def main():
+    # Initialize the Application
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    
+    # Add handlers for basic commands
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("perguntas", perguntas))
+    
+    # Add handler for all messages (including commands in custom_qas)
+    app.add_handler(MessageHandler(filters.TEXT, handle_message))
+    
+    # Start the bot
+    print("Starting bot...")
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+if __name__ == '__main__':
+    main()
